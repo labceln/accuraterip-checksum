@@ -21,14 +21,12 @@
 const char *const version = "1.5";
 
 bool check_fileformat(const SF_INFO* sfinfo) {
-#ifdef DEBUG
 	printf("Channels: %i\n", sfinfo->channels);
 	printf("Format: %X\n", sfinfo->format);
-	printf("Frames: %li\n", sfinfo->frames);
+	printf("Frames: %li\n", (int)sfinfo->frames);
 	printf("Samplerate: %i\n", sfinfo->samplerate);
 	printf("Sections: %i\n", sfinfo->sections);
 	printf("Seekable: %i\n", sfinfo->seekable);
-#endif
 
 	if(sfinfo->channels != 2) return false;
 	if((sfinfo->format & SF_FORMAT_TYPEMASK & SF_FORMAT_WAV) != SF_FORMAT_WAV) return false;
@@ -110,20 +108,14 @@ uint32_t compute_v2_checksum(const uint32_t* audio_data, const size_t audio_data
 	int DataDWORDSize = DataSize / sizeof(DWORD);
 
     DWORD AC_CRCNEW = 0;
-	DWORD MulBy = 1;
-	for (int i = 0; i < DataDWORDSize; i++)
+	int end = min(DataDWORDSize, (int)AR_CRCPosCheckTo);
+	for (int i = max((int)(AR_CRCPosCheckFrom - 1), 0); i < end; i++)
 	{
-		if (MulBy >= AR_CRCPosCheckFrom && MulBy <= AR_CRCPosCheckTo)
-		{
-			DWORD Value = pAudioData[i];
-
-			QWORD CalcCRCNEW = (QWORD)Value * (QWORD)MulBy;
+			QWORD CalcCRCNEW = (QWORD)pAudioData[i] * (QWORD)(i+1);
 			DWORD LOCalcCRCNEW = (DWORD)(CalcCRCNEW & (QWORD)0xFFFFFFFF);
-			DWORD HICalcCRCNEW = (DWORD)(CalcCRCNEW / (QWORD)0x100000000);
+			DWORD HICalcCRCNEW = (DWORD)(CalcCRCNEW >> 32 );
 			AC_CRCNEW+=HICalcCRCNEW;
 			AC_CRCNEW+=LOCalcCRCNEW;
-		}
-        MulBy++;
 	}
 
 	return AC_CRCNEW;
